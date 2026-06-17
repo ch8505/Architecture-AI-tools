@@ -1,7 +1,7 @@
 # Repo Onboarding for Coding Agents
 
 Quick directive
-- Read these four focused documents on first load: `01-global-overview.md`, `02-controllers-rules.md`, `03-services-rules.md`, `04-repositories-rules.md` (files live in `.github/`). They summarize tech, conventions, and patterns.
+- Read these four focused documents on first load: `instructions/01-global-overview.md`, `instructions/02-controllers-rules.md`, `instructions/03-services-rules.md`, `instructions/04-repositories-rules.md` (files live in `.github/instructions/`). They summarize tech, conventions, and patterns.
 
 What to do on first run
 1. Inspect `Program.cs` and `AppDbContext.cs` to learn service registrations and middleware order.
