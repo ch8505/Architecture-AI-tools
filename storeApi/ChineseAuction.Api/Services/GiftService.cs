@@ -124,7 +124,7 @@ namespace ChineseAuction.Api.Services
             gift.DonorId = donorId;
             gift.ImageUrl = imagePath; // stored in wwwroot
 
-            gift.CategoryId = (int)dto.CategoryId;
+            gift.CategoryId = dto.CategoryId ?? throw new ArgumentException("CategoryId is required", nameof(dto.CategoryId));
             gift.Category = null;
 
             var giftId = await _repo.CreateAsync(gift);
