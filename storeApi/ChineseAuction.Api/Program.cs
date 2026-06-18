@@ -117,6 +117,19 @@ builder.Services.AddAutoMapper(typeof(DonorProfile));
 builder.Services.AddHttpClient<IAiService, OpenAiService>();
 
 // =======================
+// Distributed Cache (Redis)
+// =======================
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrEmpty(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "ChineseAuction_";
+    });
+}
+
+// =======================
 // JWT Authentication
 // =======================
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -182,6 +195,30 @@ builder.Services.AddCors(options =>
 // Build App
 // =======================
 var app = builder.Build();
+
+
+// ========================================================
+// יצירה אוטומטית והרצת Migrations של מסד הנתונים בדוקר
+// ========================================================
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        
+        // הפקודה הזו בודקת אם הדאטהבייס קיים; אם לא - היא יוצרת אותו ומריצה את כל ה-Migrations
+        dbContext.Database.Migrate();
+        
+        Console.WriteLine(">>>> Database migration applied successfully! <<<<");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($">>>> Error applying database migrations: {ex.Message} <<<<");
+    }
+}
+// ========================================================
+
+
 
 // =======================
 // Middleware pipeline
