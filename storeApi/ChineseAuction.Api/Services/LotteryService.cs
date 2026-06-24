@@ -1,8 +1,6 @@
-using AutoMapper;
 using ChineseAuction.Api.Dtos;
 using ChineseAuction.Api.Models;
 using ChineseAuction.Api.Repositories;
-using Microsoft.Extensions.Logging;
 using System.Globalization;
 
 namespace ChineseAuction.Api.Services
@@ -13,8 +11,8 @@ namespace ChineseAuction.Api.Services
         private readonly IGiftRepository _giftRepo;
         private readonly ILotteryRepository _lotteryRepo;
         private readonly IUserRepository _userRepo;
-        private readonly IMapper _mapper;
         private readonly ILogger<LotteryService> _logger;
+        private readonly KafkaProducerService _kafkaProducerService;
         private readonly string _reportsPath;
 
         public LotteryService(
@@ -22,16 +20,16 @@ namespace ChineseAuction.Api.Services
             IGiftRepository giftRepo,
             ILotteryRepository lotteryRepo,
             IUserRepository userRepo,
-            IMapper mapper,
             ILogger<LotteryService> logger,
+            KafkaProducerService kafkaProducerService,
             IWebHostEnvironment env)
         {
             _orderRepo = orderRepo;
             _giftRepo = giftRepo;
             _lotteryRepo = lotteryRepo;
             _userRepo = userRepo;
-            _mapper = mapper;
             _logger = logger;
+            _kafkaProducerService = kafkaProducerService;
 
             // Reports folder in app root
             _reportsPath = Path.Combine(env.ContentRootPath, "Reports");
@@ -39,16 +37,16 @@ namespace ChineseAuction.Api.Services
         }
 
         /// <summary>
-        /// вешм желд тбеш оърд азъ - осъок тм джореъ оаещшеъ. ан айп лшийсйн оезжш null.
-        /// щеош аъ д-Winner босг е оесйу шщеод мчебх Winners.csv
+        /// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ null.
+        /// пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ-Winner пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Winners.csv
         /// </summary>
         public async Task<WinnerResultDto?> DrawForGiftAsync(int giftId)
         {
-            // 1. чбм аъ лм дджореъ щолймеъ аъ доърд дже
+            // 1. пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
             var orders = await _orderRepo.GetByGiftIdAsync(giftId);
             var confirmed = orders.Where(o => o.Status == Status.IsConfirmed).ToList();
 
-            // 2. зщб лоеъ лшийсйн млм ощъощ тбеш доърд дже
+            // 2. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
             var ticketsByUser = new Dictionary<int, int>(); // userId -> ticket count
             string giftName = string.Empty;
 
@@ -65,7 +63,7 @@ namespace ChineseAuction.Api.Services
             var totalTickets = ticketsByUser.Values.Sum();
             if (totalTickets == 0) return null;
 
-            // 3. бзйшъ желд мфй ощчм (лоеъ лшийсйн)
+            // 3. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             var rng = new Random();
             var pick = rng.Next(1, totalTickets + 1); // [1..totalTickets]
             var cumulative = 0;
@@ -80,7 +78,7 @@ namespace ChineseAuction.Api.Services
                 }
             }
 
-            // 4. чбм фший ощъощ
+            // 4. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             var user = await _userRepo.GetByIdAsync(winnerUserId);
             if (user == null)
             {
@@ -88,7 +86,7 @@ namespace ChineseAuction.Api.Services
                 return null;
             }
 
-            // 5. щойшъ желд босг
+            // 5. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             var winnerEntity = new Winner
             {
                 GiftId = giftId,
@@ -97,7 +95,7 @@ namespace ChineseAuction.Api.Services
 
             var savedWinner = await _lotteryRepo.SaveWinnerAsync(winnerEntity);
 
-            // 6. дфчъ DTO еъйтег бгйсч (Winners.csv)
+            // 6. пїЅпїЅпїЅпїЅ DTO пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (Winners.csv)
             var result = new WinnerResultDto
             {
                 GiftId = giftId,
@@ -111,12 +109,14 @@ namespace ChineseAuction.Api.Services
 
             AppendWinnerReport(result);
 
+            await _kafkaProducerService.SendLotteryEventAsync(result);
+
             return result;
         }
 
         /// <summary>
-        /// ошйх двшмд млм оърд щчййоеъ тбешд лшийсйн (обесс тм оъреъ щролше),
-        /// щеош аъ лм джелйн ейецш гез длрсеъ (Revenue.csv).
+        /// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ),
+        /// пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (Revenue.csv).
         /// </summary>
         public async Task<IEnumerable<WinnerResultDto>> DrawAllAsync()
         {
@@ -150,7 +150,7 @@ namespace ChineseAuction.Api.Services
                 }
 
                 // escape commas in fields
-                string esc(string? s) => (s ?? string.Empty).Replace(",", " ");
+                static string esc(string? s) => (s ?? string.Empty).Replace(",", " ");
                 sw.WriteLine($"{result.GiftId},{esc(result.GiftName)},{result.WinnerUserId},{esc(result.WinnerName)},{esc(result.WinnerEmail)},{result.TotalTickets},{result.DrawDate.ToString("o", CultureInfo.InvariantCulture)}");
             }
             catch (Exception ex)

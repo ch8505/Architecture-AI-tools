@@ -116,6 +116,8 @@ builder.Services.AddAutoMapper(typeof(DonorProfile));
 
 builder.Services.AddHttpClient<IAiService, OpenAiService>();
 
+builder.Services.AddSingleton<KafkaProducerService>();
+
 // =======================
 // Distributed Cache (Redis)
 // =======================

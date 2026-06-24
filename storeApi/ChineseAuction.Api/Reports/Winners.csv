@@ -1,2 +1,5 @@
 GiftId,GiftName,WinnerUserId,1,מעודכן,7,user2 ,user2@example.com,3,2026-01-01T16:22:40.3681928Z
 WinnerName,WinnerEmail,TotalTickets,DrawDate
+2,gift10,8,user3 ,user3@example.com,7,2026-06-24T13:58:21.4965584Z
+3,gift20,8,user3 ,user3@example.com,1,2026-06-24T15:37:50.7899975Z
+32,Portugal Surf Camp,5,aaa ,aaa@aaa.com,3,2026-06-24T17:16:40.7582445Z

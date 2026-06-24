@@ -51,12 +51,18 @@ namespace ChineseAuction.Api.Services
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var cachedResult = JsonSerializer.Deserialize<IEnumerable<GiftDetailDto>>(cached, options);
                 if (cachedResult != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Fetching all gifts from the cache (cache hit)");
                     return cachedResult;
+                }
+                    
             }
 
             // Cache miss — read from repo and populate cache
             var gifts = await _repo.GetAllAsync();
             var result = _mapper.Map<IEnumerable<GiftDetailDto>>(gifts);
+            //הדפסה ל console באם ניגש למאגר הנתונים ולא מה cache
+            System.Diagnostics.Debug.WriteLine("Fetching all gifts from the database (cache miss)");
 
             var ttlInMinutes = _configuration.GetValue<int?>("CacheSettings:DefaultTTLInMinutes") ?? 5;
             var cacheOptions = new DistributedCacheEntryOptions
